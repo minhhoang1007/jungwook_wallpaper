@@ -101,7 +101,7 @@ class _DrawerSceenState extends State<DrawerSceen> {
             ),
             title: Text("Catepory"),
             onTap: () {
-              Navigator.of(context);
+              Navigator.pop(context);
             },
           ),
           ListTile(
