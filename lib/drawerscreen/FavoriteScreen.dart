@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jungkook_wallpaper/drawerscreen/drawer.dart';
+import 'package:jungkook_wallpaper/utils/Common.dart';
 
 class FavoriteScreen extends StatefulWidget {
   FavoriteScreen({Key key}) : super(key: key);
@@ -12,6 +13,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   @override
   Widget build(BuildContext context) {
+    print(Common().item);
+    var size = MediaQuery.of(context).size;
+    final double itemHeight = (size.height - kToolbarHeight) / 2;
+    final double itemWidth = size.width / 2;
     return SafeArea(
       child: Scaffold(
         key: _scaffoldKey,
@@ -42,11 +47,28 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
             ],
           ),
         ),
-        body: Container(
-          child: Center(
-            child: Text("No image"),
-          ),
-        ),
+        body: Common().item.length == 0
+            ? Container(
+                child: Center(
+                  child: Text("No image favorite"),
+                ),
+              )
+            : GridView.builder(
+                itemCount: Common().item.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: (itemWidth / itemHeight)),
+                itemBuilder: (BuildContext context, int index) {
+                  return GestureDetector(
+                    onTap: () {},
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.3,
+                      width: MediaQuery.of(context).size.width * 0.5,
+                      child: Image.asset(Common().item[index]),
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

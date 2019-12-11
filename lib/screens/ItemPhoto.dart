@@ -1,12 +1,15 @@
 import 'dart:io';
-
-import 'package:dio/dio.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:esys_flutter_share/esys_flutter_share.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:jungkook_wallpaper/drawerscreen/Wallpaper.dart';
+
+import 'package:jungkook_wallpaper/utils/Common.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:photos_saver/photos_saver.dart';
 
 class ItemPhoto extends StatefulWidget {
   String img;
@@ -17,6 +20,15 @@ class ItemPhoto extends StatefulWidget {
 }
 
 class _ItemPhotoState extends State<ItemPhoto> {
+  bool chonfavo;
+  @override
+  void initState() {
+    super.initState();
+    Common().item.length == 0 ? chonfavo = false : chonfavo = true;
+    loadImage();
+  }
+
+  //Share
   Future<void> _shareImage() async {
     try {
       final ByteData bytes = await rootBundle.load(widget.img);
@@ -29,22 +41,48 @@ class _ItemPhotoState extends State<ItemPhoto> {
   }
 
   //Save
-  void move() {
-    rootBundle.load(widget.img).then((content) async {
-      Directory dic = await getExternalStorageDirectory();
-      // print(dic.absolute.path);
-      var path = '${dic.absolute.path}/img.jpg';
-      File newFile = File('${dic.absolute.path}/img.jpg');
-      newFile.writeAsBytesSync(content.buffer.asUint8List());
-      // visionImage = FirebaseVisionImage.fromFile(newFile);
-      // _runAnalysis();
-      Fluttertoast.showToast(
-        msg: "Save Complete",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIos: 1,
-        fontSize: 16,
-      );
+  Uint8List _imageData;
+  var _scaffoldKey = new GlobalKey<ScaffoldState>();
+  Future<void> loadImage() async {
+    var imageData = await rootBundle.load(widget.img).then((byteData) {
+      return byteData.buffer.asUint8List();
+    });
+
+    if (!mounted) return;
+    setState(() {
+      _imageData = imageData;
+    });
+  }
+
+  //Set wallpaper
+  String home = "Home Screen",
+      lock = "Lock Screen",
+      both = "Both Screen",
+      system = "System";
+
+  Stream<String> progressString;
+  String res;
+  bool downloading = false;
+  _setwallpaper() {
+    progressString = Wallpaper.ImageDownloadProgress(widget.img);
+    progressString.listen((data) {
+      setState(() {
+        res = data;
+        downloading = true;
+      });
+      print("DataReceived: " + data);
+    }, onDone: () async {
+      home = await Wallpaper.homeScreen();
+      setState(() {
+        downloading = false;
+        home = home;
+      });
+      print("Task Done");
+    }, onError: (error) {
+      setState(() {
+        downloading = false;
+      });
+      print("Some Error");
     });
   }
 
@@ -52,6 +90,7 @@ class _ItemPhotoState extends State<ItemPhoto> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        key: _scaffoldKey,
         body: Stack(
           children: <Widget>[
             Container(
@@ -78,11 +117,28 @@ class _ItemPhotoState extends State<ItemPhoto> {
                   Row(
                     children: <Widget>[
                       IconButton(
-                        icon: Icon(
-                          Icons.favorite_border,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {},
+                        icon: chonfavo
+                            ? Icon(
+                                Icons.favorite,
+                                color: Colors.white,
+                              )
+                            : Icon(
+                                Icons.favorite_border,
+                                color: Colors.white,
+                              ),
+                        onPressed: () {
+                          setState(() {
+                            chonfavo = !chonfavo;
+                            Common().item.add(widget.img);
+                            Fluttertoast.showToast(
+                              msg: "Saved favorite",
+                              toastLength: Toast.LENGTH_SHORT,
+                              gravity: ToastGravity.CENTER,
+                              timeInSecForIos: 1,
+                              fontSize: 16,
+                            );
+                          });
+                        },
                       ),
                       IconButton(
                         icon: Icon(
@@ -111,7 +167,9 @@ class _ItemPhotoState extends State<ItemPhoto> {
                   color: Colors.white,
                 ),
                 label: "Set as Wallpaper",
-                onTap: () {}),
+                onTap: () {
+                  _setwallpaper();
+                }),
             SpeedDialChild(
                 child: Icon(Icons.share, color: Colors.white),
                 label: "Share",
@@ -126,7 +184,11 @@ class _ItemPhotoState extends State<ItemPhoto> {
                 ),
                 label: "Save",
                 onTap: () async {
-                  await move();
+                  String filePath =
+                      await PhotosSaver.saveFile(fileData: _imageData);
+                  _scaffoldKey.currentState.showSnackBar(SnackBar(
+                      duration: Duration(seconds: 5),
+                      content: Text("Created image file at $filePath")));
                 }),
           ],
         ),
